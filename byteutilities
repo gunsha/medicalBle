@@ -1,0 +1,103 @@
+namespace Roche.BLELib.Utility.Core
+{
+    using System;
+    using System.Text;
+
+    public static class ByteUtility
+    {
+        public static DateTime? getDate(int year, int month, int day, int hour, int min, int sec)
+        {
+            DateTime? nullable = null;
+            try
+            {
+                nullable = new DateTime(year, month, day, hour, min, sec);
+            }
+            catch (Exception)
+            {
+            }
+            return nullable;
+        }
+
+        public static DateTimeWrapper GetDate(byte[] buffer)
+        {
+            if ((buffer != null) && (buffer.Length >= 7))
+            {
+                int index = 0;
+                int year = getUInt16(buffer[index], buffer[index + 1]) & 0xffff;
+                index += 2;
+                int month = buffer[index++] & 0xff;
+                int day = buffer[index++] & 0xff;
+                int hour = buffer[index++] & 0xff;
+                int min = buffer[index++] & 0xff;
+                int sec = buffer[index] & 0xff;
+                return new DateTimeWrapper(getDate(year, month, day, hour, min, sec).Value);
+            }
+            return null;
+        }
+
+        public static string GetHexString(byte[] buffer) => 
+            ((buffer != null) ? GetHexString(buffer, 0, buffer.Length) : "NULL");
+
+        public static string GetHexString(byte[] buffer, int startIndex, int length)
+        {
+            string str = string.Empty;
+            if ((((buffer == null) || (length == 0)) || ((startIndex < 0) || (startIndex >= buffer.Length))) || ((startIndex + length) > buffer.Length))
+            {
+                return str;
+            }
+            StringBuilder builder = new StringBuilder("[");
+            int index = startIndex;
+            int num2 = length + startIndex;
+            while (index < num2)
+            {
+                object[] args = new object[] { buffer[index] };
+                builder.AppendFormat("{0:x2}, ", args);
+                index++;
+            }
+            builder.Append("]  Length = " + buffer.Length);
+            return builder.ToString();
+        }
+
+        public static byte GetLeastSignificantNibble(byte byteValue) => 
+            ((byte) (byteValue & 15));
+
+        public static byte GetMostSignificantNibble(byte byteValue) => 
+            ((byte) ((byteValue >> 4) & 15));
+
+        public static double GetSfloat(byte lsb, byte msb)
+        {
+            Sfloat sfloat = new Sfloat(lsb, msb);
+            return sfloat.toDouble();
+        }
+
+        public static int GetShort(ByteBufferReader byteBuffer)
+        {
+            short num;
+            byteBuffer.ToInt16(out num);
+            return (num & 0xffff);
+        }
+
+        public static short GetSizeofSfloat() => 
+            2;
+
+        public static int getUInt16(byte lsb, byte msb) => 
+            (((0xff & msb) << 8) | (0xff & lsb));
+
+        public static ushort SwapEndianness(ushort input) => 
+            ((ushort) (((input & 0xff00) >> 8) | ((input & 0xff) << 8)));
+
+        [Flags]
+        public enum Bits : short
+        {
+            Bit0 = 1,
+            Bit1 = 2,
+            Bit2 = 4,
+            Bit3 = 8,
+            Bit4 = 0x10,
+            Bit5 = 0x20,
+            Bit6 = 0x40,
+            Bit7 = 0x80
+        }
+    }
+}
+
