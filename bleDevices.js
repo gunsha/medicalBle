@@ -32,8 +32,11 @@ class BleDevices {
                 { service: '1808', id: '2A18', type: [{ name: 'notify' }] },
                 { service: '1808', id: '2A52', type: [{ name: 'notify' }, { name: 'write', value: [0x01, 0x01] }] },
             ],
-            dataParse: function(data){
-                return (this.Ieee11073ToSingle(buffer[12], buffer[13]) * 100000).toFixed();
+            dataParse: function (data) {
+                return { 
+                    date: this.GetGlucoseDate(data.value), 
+                    value: (this.Ieee11073ToSingle(data.value[12], data.value[13]) * 100000).toFixed() 
+                };
             }
         }
     ];
@@ -57,6 +60,26 @@ class BleDevices {
             exponent = -(0x10 - exponent);
         var magnitude = Math.pow(10, exponent);
         return (mantissa * magnitude);
+    }
+
+    getUInt16(lsb, msb) {
+        return (((0xff & msb) << 8) | (0xff & lsb));
+    }
+
+    GetGlucoseDate(buffer) {
+        var _buffer = buffer.splice(3);
+        if ((_buffer != null) && (_buffer.length >= 7)) {
+            var index = 0;
+            var year = this.getUInt16(_buffer[index], _buffer[index + 1]) & 0xffff;
+            index += 2;
+            var month = (_buffer[index++] & 0xff) - 1;
+            var day = _buffer[index++] & 0xff;
+            var hour = _buffer[index++] & 0xff;
+            var min = _buffer[index++] & 0xff;
+            var sec = _buffer[index] & 0xff;
+            return new Date(year, month, day, hour, min, sec, 0);
+        }
+        return null;
     }
 
 }
