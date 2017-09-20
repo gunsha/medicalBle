@@ -14,6 +14,7 @@ import {
   ScrollView
 } from 'react-native';
 import BleManager from 'react-native-ble-manager';
+import GlucoseUtils from './glucoseUtils.js';
 
 const BleManagerModule = NativeModules.BleManager;
 const bleManagerEmitter = new NativeEventEmitter(BleManagerModule);
@@ -95,7 +96,10 @@ export default class medicalBle extends Component {
       }
     }
     console.log(data)
-    console.log((this.Ieee11073ToSingle(data.value[12],data.value[13])*100000).toFixed());
+    var data1 = new Uint16Array(data.value);
+    console.log(data1)
+    console.log(GlucoseUtils.GetDate(data.value))
+    console.log(GlucoseUtils.ExtractGlucoseConcentration(data.value));
     //console.log('spO2 ' + ox2 + ' PR ' + pr)
 
     //console.log('Received data from ' + data.peripheral + ' characteristic ' + data.characteristic, data.value);
