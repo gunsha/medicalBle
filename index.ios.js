@@ -126,7 +126,7 @@ export default class medicalBle extends Component {
           console.log('Peripheral info:', peripheralInfo);
 
           for (var i in item.characteristics) {
-            var c = item.characteristic[c];
+            var c = item.characteristics[i];
             for (var e in c.type) {
               if (c.type[e].name === 'notify') {
                 BleManager.startNotification(item.id, c.service, c.id);
