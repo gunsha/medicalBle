@@ -15,12 +15,11 @@ import {
 } from 'react-native';
 import BleManager from 'react-native-ble-manager';
 import GlucoseUtils from './glucoseUtils.js';
+import BleDevices from './bleDevices.js';
 
 const BleManagerModule = NativeModules.BleManager;
 const bleManagerEmitter = new NativeEventEmitter(BleManagerModule);
-const devices = { mc70: "1FD9381C-9BED-D6B1-D724-A4DB50FB3045", 
-                  nonin: "6B1A5D59-FBE4-EA23-FEFC-7A97F951B111",
-                  accucheck:"B5EEA7A7-5F24-0B39-61DF-C8C26959B576" };
+
 let ox2 = '';
 let pr = '';
 
@@ -83,26 +82,9 @@ export default class medicalBle extends Component {
   }
 
   handleUpdateValueForCharacteristic(data) {
-
-    if (data.peripheral == devices.nonin) {
-      ox2 = this.Ieee11073ToSingle(data.value[1],data.value[2]) + '';
-      pr = data.value[3] + '';
-    }
-    
-    if (data.peripheral == devices.mc70) {
-      if (data.value[0] != 170 && data.value[3] != 65 && data.value[19] == 0) {
-        ox2 = data.value[16] != 127 ? data.value[16] + '' : '--';
-        pr = data.value[17] != 255 ? data.value[17] + '' : '--';
-      }
-    }
     console.log(data)
-    var data1 = new Uint16Array(data.value);
-    console.log(data1)
     console.log(GlucoseUtils.GetDate(data.value))
-    console.log(GlucoseUtils.ExtractGlucoseConcentration(data.value));
-    //console.log('spO2 ' + ox2 + ' PR ' + pr)
-
-    //console.log('Received data from ' + data.peripheral + ' characteristic ' + data.characteristic, data.value);
+    console.log(BleDevices.getDevice({ id: data.peripheral }).dataParse(data));
   }
 
   handleStopScan() {
@@ -123,14 +105,13 @@ export default class medicalBle extends Component {
     var peripherals = this.state.peripherals;
     if (!peripherals.has(peripheral.id)) {
       console.log('Got ble peripheral', peripheral);
-
-      if (peripheral.id === devices.mc70 || peripheral.id === devices.nonin || peripheral.id === devices.accucheck) {
-        this.connect(peripheral);
+      var device = BleDevices.getDevice(peripheral);
+      if (device) {
+        this.connect(device);
         BleManager.stopScan();
-        peripherals.set(peripheral.id, peripheral);
+        peripherals.set(peripheral.id, device);
         this.setState({ peripherals })
       }
-
     }
   }
 
@@ -139,79 +120,29 @@ export default class medicalBle extends Component {
 
     BleManager.connect(item.id).then(device => {
       console.log(JSON.stringify(device));
-      if (item.id === devices.accucheck) {
-        BleManager.retrieveServices(item.id)
-          .then((peripheralInfo) => {
-            // Success code
-            console.log('Peripheral info:', peripheralInfo);
-            //this.read({ "id": item.id, "characteristic": "FFE1", "service": "FFE0" });
-            BleManager.startNotification(item.id, "1808", "2A18");
-            BleManager.startNotification(item.id, "1808", "2A52");
-            BleManager.write(item.id, "1808", "2A52", [0x01,0x01]);
-          });
-      }
-      if (item.id === devices.mc70) {
-        BleManager.retrieveServices(item.id)
-          .then((peripheralInfo) => {
-            // Success code
-            console.log('Peripheral info:', peripheralInfo);
-            this.read({ "id": item.id, "characteristic": "FFE1", "service": "FFE0" });
-          });
-      }
-      if (item.id === devices.nonin) {
-        BleManager.retrieveServices(item.id)
-          .then((peripheralInfo) => {
-            console.log('Peripheral info:', peripheralInfo);
-            this.read({ "id": item.id, "characteristic": "2A5F", "service": "1822" });
-          });
-      }
+      BleManager.retrieveServices(item.id)
+        .then((peripheralInfo) => {
+
+          console.log('Peripheral info:', peripheralInfo);
+
+          for (var i in item.characteristics) {
+            var c = item.characteristic[c];
+            for (var e in c.type) {
+              if (c.type[e].name === 'notify') {
+                BleManager.startNotification(item.id, c.service, c.id);
+              }
+              if (c.type[e].name === 'write') {
+                BleManager.write(item.id, c.service, c.id, c.type[e].value);
+              }
+            }
+          }
+        });
+
     }, error => {
       this.d = error;
       console.log(error);
     });
 
-  }
-  Ieee11073ToSingle(byte1,byte2) {
-    var ieee11073 = (byte1 + 0x100 * byte2);
-    var mantissa = ieee11073 & 0x0FFF;
-
-    if (mantissa >= 0x0800)
-      mantissa = -(0x1000 - mantissa);
-    var exponent = ieee11073 >> 12;
-    if (exponent >= 0x08)
-      exponent = -(0x10 - exponent);
-    var magnitude = Math.pow(10, exponent);
-    return (mantissa * magnitude);
-  }
-  repeat(str, num) {
-    if (str.length === 0 || num <= 1) {
-      if (num === 1) {
-        return str;
-      }
-
-      return '';
-    }
-
-    var result = '',
-      pattern = str;
-
-    while (num > 0) {
-      if (num & 1) {
-        result += pattern;
-      }
-
-      num >>= 1;
-      pattern += pattern;
-    }
-
-    return result;
-  }
-
-  lpad(obj, str, num) {
-    return this.repeat(str, num - obj.length) + obj;
-  }
-  read(item) {
-    BleManager.startNotification(item.id, item.service, item.characteristic);
   }
   render() {
     return (
