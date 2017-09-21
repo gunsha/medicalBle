@@ -20,9 +20,9 @@ class BleDevices {
             name: 'nonin', id: "6B1A5D59-FBE4-EA23-FEFC-7A97F951B111", characteristics: [
                 { service: '1822', id: '2A5F', type: [{ name: 'notify' }] }
             ],
-            dataParse: function (data) {
+            dataParse: function (data,_this) {
                 return {
-                    ox2: this.Ieee11073ToSingle(data.value[1], data.value[2]) + '',
+                    ox2: _this.Ieee11073ToSingle(data.value[1], data.value[2]) + '',
                     pr: data.value[3] + ''
                 }
             }
@@ -32,10 +32,10 @@ class BleDevices {
                 { service: '1808', id: '2A18', type: [{ name: 'notify' }] },
                 { service: '1808', id: '2A52', type: [{ name: 'notify' }, { name: 'write', value: [0x01, 0x01] }] },
             ],
-            dataParse: function (data) {
+            dataParse: function (data,_this) {
                 return { 
-                    date: this.GetGlucoseDate(data.value), 
-                    value: (this.Ieee11073ToSingle(data.value[12], data.value[13]) * 100000).toFixed() 
+                    date: _this.GetGlucoseDate(data.value), 
+                    value: (_this.Ieee11073ToSingle(data.value[12], data.value[13]) * 100000).toFixed() 
                 };
             }
         }
@@ -43,7 +43,7 @@ class BleDevices {
 
     getDevice(device) {
         for (var i in this.devices) {
-            if (device.id == this.devices[i])
+            if (device.id == this.devices[i].id)
                 return this.devices[i];
         }
         return null;
@@ -67,7 +67,12 @@ class BleDevices {
     }
 
     GetGlucoseDate(buffer) {
-        var _buffer = buffer.splice(3);
+        var _buffer = [];
+        for(var i in buffer){
+            if(i>=3){
+                _buffer.push(buffer[i]);
+            }
+        }
         if ((_buffer != null) && (_buffer.length >= 7)) {
             var index = 0;
             var year = this.getUInt16(_buffer[index], _buffer[index + 1]) & 0xffff;
@@ -76,8 +81,8 @@ class BleDevices {
             var day = _buffer[index++] & 0xff;
             var hour = _buffer[index++] & 0xff;
             var min = _buffer[index++] & 0xff;
-            var sec = _buffer[index] & 0xff;
-            return new Date(year, month, day, hour, min, sec, 0);
+            var d = new Date(year, month, day, hour, min, 0, 0);
+            return new Date(d.getTime()-11100000);
         }
         return null;
     }

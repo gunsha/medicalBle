@@ -82,9 +82,7 @@ export default class medicalBle extends Component {
   }
 
   handleUpdateValueForCharacteristic(data) {
-    console.log(data)
-    console.log(GlucoseUtils.GetDate(data.value))
-    console.log(BleDevices.getDevice({ id: data.peripheral }).dataParse(data));
+    console.log(BleDevices.getDevice({ id: data.peripheral }).dataParse(data,BleDevices));
   }
 
   handleStopScan() {
